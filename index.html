@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>CEF Alert</title>
+    <style>
+        body {
+            margin: 0;
+            background: rgba(0,0,0,0.6);
+            font-family: Arial, sans-serif;
+        }
+        #box {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 260px;
+            text-align: center;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            background: #609ad4;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="box">
+    <h3>Trocar Skin</h3>
+    <p>Deseja aplicar a nova skin?</p>
+    <button onclick="confirmar()">Confirmar</button>
+</div>
+
+<script>
+    // RECEBE EVENTO DO SERVIDOR
+    function alert_show(eventData) {
+        console.log("Evento recebido:", eventData);
+    }
+
+    // REGISTRA CALLBACK (DOCUMENTAÇÃO OFICIAL)
+    Cef.registerEventCallback("alert_show", "alert_show");
+
+    function confirmar() {
+        // ENVIA EVENTO DE VOLTA AO SERVIDOR
+        Cef.sendEvent(
+            "alert_response",
+            JSON.stringify([1, 1]) // ALERT_SET_SKIN, true
+        );
+    }
+</script>
+
+</body>
+</html>
