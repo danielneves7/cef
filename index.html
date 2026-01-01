@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 
 <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 html, body {
     width: 100%;
     height: 100%;
@@ -11,7 +17,9 @@ html, body {
     overflow: hidden;
 }
 
+/* câmera ativa, invisível */
 video {
+    position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
@@ -23,7 +31,7 @@ video {
     width: 100%;
     display: flex;
     justify-content: center;
-    gap: 16px;
+    gap: 14px;
 }
 
 button {
@@ -43,32 +51,38 @@ button {
 
 <div class="controls">
     <button onclick="switchCamera()">🔄</button>
-    <button onclick="photo()">📸</button>
-    <button onclick="start()">🎥</button>
-    <button onclick="stop()">⏹</button>
+    <button onclick="takePhoto()">📸</button>
+    <button onclick="startVideo()">🎥</button>
+    <button onclick="stopVideo()">⏹</button>
+    <button onclick="closeCEF()">❌</button>
 </div>
 
 <script>
 let video = document.getElementById("video");
-let stream, recorder, chunks = [];
-let facing = "user";
+let stream = null;
+let recorder = null;
+let chunks = [];
+let facing = "user"; // frontal / traseira
 
 async function startCamera() {
     if (stream) stream.getTracks().forEach(t => t.stop());
+
     stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: facing },
         audio: true
     });
+
     video.srcObject = stream;
 }
+
 startCamera();
 
 function switchCamera() {
-    facing = facing === "user" ? "environment" : "user";
+    facing = (facing === "user") ? "environment" : "user";
     startCamera();
 }
 
-function photo() {
+function takePhoto() {
     let canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -80,20 +94,27 @@ function photo() {
     });
 }
 
-function start() {
+function startVideo() {
     recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
     chunks = [];
+
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.start();
 }
 
-function stop() {
+function stopVideo() {
+    if (!recorder) return;
+
     recorder.stop();
     recorder.onstop = () => {
         let blob = new Blob(chunks, { type: "video/webm" });
         download(blob, "video_" + Date.now() + ".webm");
         alert("VIDEO");
     };
+}
+
+function closeCEF() {
+    alert("CLOSE");
 }
 
 function download(blob, filename) {
