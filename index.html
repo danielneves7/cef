@@ -10,10 +10,15 @@ html, body {
     margin: 0;
     background: transparent;
     overflow: hidden;
-    pointer-events: none; /* base sem clique */
+
+    /* 🔥 BLOQUEIA SELEÇÃO */
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+
+    pointer-events: none;
 }
 
-/* área clicável */
 .controls {
     position: absolute;
     bottom: 30px;
@@ -21,7 +26,8 @@ html, body {
     display: flex;
     justify-content: center;
     gap: 14px;
-    pointer-events: auto; /* 🔥 habilita clique */
+
+    pointer-events: auto;
 }
 
 button {
@@ -32,6 +38,9 @@ button {
     background: rgba(255,255,255,0.95);
     font-size: 22px;
     cursor: pointer;
+
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* câmera invisível */
@@ -49,11 +58,11 @@ video {
 <video id="video" autoplay playsinline></video>
 
 <div class="controls">
-    <button onclick="switchCamera()">🔄</button>
-    <button onclick="takePhoto()">📸</button>
-    <button onclick="startVideo()">🎥</button>
-    <button onclick="stopVideo()">⏹</button>
-    <button onclick="send('CLOSE')">❌</button>
+    <button onmousedown="btn(event,'SWITCH')">🔄</button>
+    <button onmousedown="btn(event,'PHOTO')">📸</button>
+    <button onmousedown="btn(event,'START')">🎥</button>
+    <button onmousedown="btn(event,'STOP')">⏹</button>
+    <button onmousedown="btn(event,'CLOSE')">❌</button>
 </div>
 
 <script>
@@ -61,57 +70,65 @@ let video = document.getElementById("video");
 let stream = null;
 let recorder = null;
 let chunks = [];
-let facing = "user"; // frontal / traseira
+let facing = "user";
 
 async function startCamera() {
     if (stream) stream.getTracks().forEach(t => t.stop());
-
     stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: facing },
         audio: true
     });
-
     video.srcObject = stream;
 }
 startCamera();
 
-function switchCamera() {
-    facing = (facing === "user") ? "environment" : "user";
-    startCamera();
+function btn(e, action) {
+    e.preventDefault();   // 🔥 evita seleção
+    e.stopPropagation();  // 🔥 evita drag
+
+    if (action === "SWITCH") {
+        facing = facing === "user" ? "environment" : "user";
+        startCamera();
+        return;
+    }
+
+    if (action === "START") {
+        recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+        chunks = [];
+        recorder.ondataavailable = ev => chunks.push(ev.data);
+        recorder.start();
+        return;
+    }
+
+    if (action === "STOP" && recorder) {
+        recorder.stop();
+        recorder.onstop = () => {
+            let blob = new Blob(chunks, { type: "video/webm" });
+            download(blob, "video_" + Date.now() + ".webm");
+            send("VIDEO");
+        };
+        return;
+    }
+
+    if (action === "PHOTO") {
+        let c = document.createElement("canvas");
+        c.width = video.videoWidth;
+        c.height = video.videoHeight;
+        c.getContext("2d").drawImage(video, 0, 0);
+        c.toBlob(b => {
+            download(b, "photo_" + Date.now() + ".png");
+            send("PHOTO");
+        });
+        return;
+    }
+
+    if (action === "CLOSE") {
+        send("CLOSE");
+    }
 }
 
-function takePhoto() {
-    let canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-
-    canvas.toBlob(blob => {
-        download(blob, "photo_" + Date.now() + ".png");
-        send("PHOTO");
-    });
-}
-
-function startVideo() {
-    recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-    chunks = [];
-    recorder.ondataavailable = e => chunks.push(e.data);
-    recorder.start();
-}
-
-function stopVideo() {
-    if (!recorder) return;
-
-    recorder.stop();
-    recorder.onstop = () => {
-        let blob = new Blob(chunks, { type: "video/webm" });
-        download(blob, "video_" + Date.now() + ".webm");
-        send("VIDEO");
-    };
-}
-
-function send(event) {
-    window.location.href = "cef://" + event; // 🔥 ponte correta no CEF 3.50
+function send(ev) {
+    window.location.href = "cef://" + ev;
 }
 
 function download(blob, filename) {
