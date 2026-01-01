@@ -1,60 +1,129 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>CEF Alert</title>
-    <style>
-        body {
-            margin: 0;
-            background: rgba(0,0,0,0.6);
-            font-family: Arial, sans-serif;
-        }
-        #box {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            width: 260px;
-            text-align: center;
-        }
-        button {
-            margin-top: 15px;
-            padding: 10px 20px;
-            border: none;
-            background: #609ad4;
-            color: #fff;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-    </style>
+<meta charset="UTF-8">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: transparent; /* 🔥 SEM FUNDO */
+    overflow: hidden;
+}
+
+/* câmera ativa, mas invisível */
+video {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.controls {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+button {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.95);
+    font-size: 22px;
+}
+</style>
 </head>
+
 <body>
 
-<div id="box">
-    <h3>Trocar Skin</h3>
-    <p>Deseja aplicar a nova skin?</p>
-    <button onclick="confirmar()">Confirmar</button>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<div class="controls">
+    <button onclick="switchCamera()">🔄</button>
+    <button onclick="takePhoto()">📸</button>
+    <button onclick="startVideo()">🎥</button>
+    <button onclick="stopVideo()">⏹</button>
 </div>
 
 <script>
-    // RECEBE EVENTO DO SERVIDOR
-    function alert_show(eventData) {
-        console.log("Evento recebido:", eventData);
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+
+let stream = null;
+let recorder = null;
+let chunks = [];
+let facing = "user"; // frontal / traseira
+
+async function startCamera() {
+    if (stream) {
+        stream.getTracks().forEach(t => t.stop());
     }
 
-    // REGISTRA CALLBACK (DOCUMENTAÇÃO OFICIAL)
-    Cef.registerEventCallback("alert_show", "alert_show");
+    stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing },
+        audio: true
+    });
 
-    function confirmar() {
-        // ENVIA EVENTO DE VOLTA AO SERVIDOR
-        Cef.sendEvent(
-            "alert_response",
-            JSON.stringify([1, 1]) // ALERT_SET_SKIN, true
-        );
+    video.srcObject = stream;
+}
+
+startCamera();
+
+function switchCamera() {
+    facing = (facing === "user") ? "environment" : "user";
+    startCamera();
+}
+
+function takePhoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+
+    let img = canvas.toDataURL("image/png");
+    emitCEF("camera:photo", img);
+}
+
+function startVideo() {
+    recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    chunks = [];
+
+    recorder.ondataavailable = e => chunks.push(e.data);
+
+    recorder.onstop = () => {
+        let blob = new Blob(chunks, { type: "video/webm" });
+        let reader = new FileReader();
+        reader.onload = () => {
+            emitCEF("camera:video", reader.result);
+        };
+        reader.readAsDataURL(blob);
+    };
+
+    recorder.start();
+}
+
+function stopVideo() {
+    if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
     }
+}
+
+// ponte CEF → Pawn
+function emitCEF(event, data) {
+    alert(JSON.stringify([event, data]));
+}
 </script>
 
 </body>
