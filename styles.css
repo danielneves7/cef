@@ -1,0 +1,51 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: transparent;
+    overflow: hidden;
+}
+
+/* CONTAINER */
+.hud-top {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+}
+
+/* BOX */
+.hud-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}
+
+/* TEXTO */
+.hud-box span {
+    font-size: 13px;
+    color: #ffffff;
+    opacity: 0.9;
+}
+
+/* ICONES */
+.hud-box img {
+    width: 14px;
+    height: 14px;
+    filter: brightness(0) invert(1);
+}
+
+/* DINHEIRO */
+.money span {
+    font-weight: bold;
+}
